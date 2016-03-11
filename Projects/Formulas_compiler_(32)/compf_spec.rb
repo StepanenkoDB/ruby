@@ -12,10 +12,6 @@ describe 'Компилятор формул' do
     it '+ -> +' do
       expect(compf.compile('+')).to eq '+'
     end
-
-    it '@ -> @' do
-      expect(compf.compile('@')).to eq '@'
-    end
   end
 
   context 'допустимые операции' do
@@ -35,8 +31,8 @@ describe 'Компилятор формул' do
       expect(compf.compile('a/b')).to eq 'a b /'
     end
 
-    it '@a -> a @' do
-      expect(compf.compile('@a')).to eq 'a @'
+    it '-a -> a @' do
+      expect(compf.compile('-a')).to eq 'a @'
     end
   end
 
@@ -53,16 +49,16 @@ describe 'Компилятор формул' do
       expect(compf.compile('a*(b/c)')).to eq 'a b c / *'
     end
 
-    it 'a+@b -> a b @ +' do
-      expect(compf.compile('a+@b')).to eq 'a b @ +'
+    it 'a+-b -> a b @ +' do
+      expect(compf.compile('a+-b')).to eq 'a b @ +'
     end
 
-    it 'a*@b -> a b @ *' do
-      expect(compf.compile('a*@b')).to eq 'a b @ *'
+    it 'a*-b -> a b @ *' do
+      expect(compf.compile('a*-b')).to eq 'a b @ *'
     end
 
-    it '@(a*b) -> a b * @' do
-      expect(compf.compile('@(a*b)')).to eq 'a b * @'
+    it '-(a*b) -> a b * @' do
+      expect(compf.compile('-(a*b)')).to eq 'a b * @'
     end
   end
 
@@ -113,12 +109,16 @@ describe 'Компилятор формул' do
       expect(compf.compile('c+(c+(c*(c+(c/(c*(c+c))))))')).to eq 'c c c c c c c c + * / + * + +'
     end
 
-    it 'a+@b*c-@d/@(y+u) -> a b @ c * + d @ y u + @ / -' do
-      expect(compf.compile('a+@b*c-@d/@(y+u)')).to eq 'a b @ c * + d @ y u + @ / -'
+    it 'a+-b*c--d/-(y+u) -> a b @ c * + d @ y u + @ / -' do
+      expect(compf.compile('a+-b*c--d/-(y+u)')).to eq 'a b @ c * + d @ y u + @ / -'
     end
 
-    it 'a*@@@@b+@@@d/c*((e+(f+@g)+m*n))-z -> a b @ @ @ @ * d @ @ @ c / e f g @ + + m n * + * + z -' do
-      expect(compf.compile('a*@@@@b+@@@d/c*((e+(f+@g)+m*n))-z')).to eq 'a b @ @ @ @ * d @ @ @ c / e f g @ + + m n * + * + z -'
+    it 'a*----b+---d/c*((e+(f+-g)+m*n))-z -> a b @ @ @ @ * d @ @ @ c / e f g @ + + m n * + * + z -' do
+      expect(compf.compile('a*----b+---d/c*((e+(f+-g)+m*n))-z')).to eq 'a b @ @ @ @ * d @ @ @ c / e f g @ + + m n * + * + z -'
+    end
+
+    it '-a--b -> a @ b @ -' do
+      expect(compf.compile('-a--b')).to eq 'a @ b @ -'
     end
   end
 

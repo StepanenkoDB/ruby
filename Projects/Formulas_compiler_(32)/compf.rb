@@ -9,7 +9,7 @@ require_relative 'stack'
 # G0:
 #     F  ->  T  |  F+T  |  F-T
 #     T  ->  M  |  T*M  |  T/M
-#     M  ->  @F |  (F)  |  V
+#     M  ->  -F |  (F)  |   V
 #     V  ->  a  |   b   |   c   |  ...  |    z
 #
 # Gs:
@@ -23,7 +23,7 @@ class Compf < Stack
   # Константы, задающие тип символа
   SYM_LEFT  = 0 # '('
   SYM_RIGHT = 1 # ')'
-  SYM_OPER  = 2 # '+', '-', '*', '/', '@'
+  SYM_OPER  = 2 # '+', '-', '*', '/'
   SYM_OTHER = 3 # иные символы
 
   def initialize
@@ -31,6 +31,10 @@ class Compf < Stack
     super
     #Создание массива с результатом компиляции
     @data = Array.new
+    @tmp = ""
+    @unaryindicator = false
+    @lastsymbol = 0
+    @leftbracket = false
   end
 
   def compile(str)
@@ -50,7 +54,7 @@ class Compf < Stack
       SYM_LEFT
     when ')'
       SYM_RIGHT
-    when '+', '-', '*', '/', '@'
+    when '+', '-', '*', '/'
       SYM_OPER
     else
       check_symbol(c)
@@ -65,28 +69,44 @@ class Compf < Stack
 
   # Обработка символа
   def process_symbol(c)
+    @unaryindicator = false
     case sym_type(c)
     when SYM_LEFT
+      @leftbracket = true if (@lastsymbol == 4 && self.size >= 1)
       push(c)
+      @lastsymbol = 0
     when SYM_RIGHT
       process_suspended_operators(c)
       pop
+      @lastsymbol = 1
     when SYM_OPER
       process_suspended_operators(c)
-      push(c)
+      push(c) if !@unaryindicator
+      @lastsymbol = 2 if !@unaryindicator
     when SYM_OTHER
       process_value(c)
+      @lastsymbol = 3
+    end
+  end
+
+  def push_unary_minuses
+    if !@leftbracket
+      @data += @tmp.chop.split(' ')
+      @tmp.clear
+      @unaryindicator = false
     end
   end
 
   # Заключительная обработка имени переменной
   def process_value(c)
     @data << c
+    push_unary_minuses
   end
 
   # Заключительная обработка символа операции
   def process_oper(c)
     @data <<  c
+    push_unary_minuses
   end
 
   # Обработка отложенных операций
@@ -98,21 +118,22 @@ class Compf < Stack
 
   # Определение приоритета операции
   def priority(c)
-    case c
-    when '+','-'
-      1
-    when '*','/'
-      2
-    when '@'
-      3
-    end
+    (c == '+' or c == '-') ? 1 : 2
   end
 
   # Определение отношения предшествования
   def precedes?(a, b)
+    if b == '-' && (@lastsymbol == 0 || @lastsymbol == 2 || @lastsymbol == 4)
+      @tmp << '@ '
+      @unaryindicator = true
+      @lastsymbol = 4 # It's an unary minus
+      return false
+    end
     return false if sym_type(a) == SYM_LEFT
-    return true  if sym_type(b) == SYM_RIGHT
-    return priority(a) > priority(b) if top == '@'
+    if sym_type(b) == SYM_RIGHT
+      @leftbracket = false
+      return true
+    end
     priority(a) >= priority(b)
   end
 end
